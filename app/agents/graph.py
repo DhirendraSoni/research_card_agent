@@ -12,34 +12,44 @@ from .tools import validate_card_ownership, cancel_card, dispatch_replacement, g
 
 def _json_from_llm(llm: BaseChatModel, prompt: str) -> Dict[str, Any]:
     resp = llm.invoke(prompt)
-    text = getattr(resp, "content", resp)  # ChatBedrock returns an AIMessage
-    # Try to extract the JSON block
+    text = getattr(resp, "content", resp)
+    if isinstance(text, list):  # some providers return a list of parts
+        text = "".join(getattr(p, "text", str(p)) for p in text)
+
+    # Try naive bracket slice first
     try:
         start = text.find("{")
         end = text.rfind("}") + 1
-        block = text[start:end]
-        return json.loads(block)
+        if start != -1 and end > start:
+            return json.loads(text[start:end])
+    except Exception:
+        pass
+    # Try direct parse (in case model returned raw JSON)
+    try:
+        return json.loads(text)
     except Exception:
         return {}
 
+
 def node_classify(state: AgentState, llm: BaseChatModel) -> AgentState:
     user_msg = state.get("user_query", "")
-    parsed = _json_from_llm(llm, INTENT_CLASSIFY_PROMPT.format(user_message=user_msg))
+    parsed = _json_from_llm(llm, INTENT_CLASSIFY_PROMPT.format(user_message=user_msg)) or {}
 
-    # Update fields if parsed
+    # Fill safe defaults
+    intent = parsed.get("intent") or "other"
+    state["intent"] = intent
     for k in ["reason", "selected_card_id", "address"]:
-        if parsed.get(k):
+        if parsed.get(k) is not None:
             state[k] = parsed[k]
 
     if parsed.get("address_confirmed") is not None:
         state["address_confirmed"] = bool(parsed["address_confirmed"])
-
     if parsed.get("delivery_confirmed") is not None:
         state["delivery_confirmed"] = bool(parsed["delivery_confirmed"])
 
-    state["intent"] = parsed.get("intent", "other")
     state.setdefault("events", []).append(f"Intent classified: {state['intent']}")
     return state
+
 
 def node_plan(state: AgentState, llm: BaseChatModel) -> AgentState:
     plan = llm.invoke(PLAN_PROMPT.format(
