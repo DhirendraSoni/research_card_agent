@@ -1,0 +1,31 @@
+{
+  "user_id": "USER123",
+  "address": {
+    "line1": "501, Maple Residency",
+    "line2": "Keshav Nagar",
+    "city": "Pune",
+    "state": "MH",
+    "pincode": "411036",
+    "country": "IN"
+  },
+  "cards": [
+    {
+      "card_id": "CRD-001",
+      "type": "Visa Platinum",
+      "masked_number": "**** **** **** 1234",
+      "status": "ACTIVE"
+    },
+    {
+      "card_id": "CRD-002",
+      "type": "Mastercard World",
+      "masked_number": "**** **** **** 5678",
+      "status": "ACTIVE"
+    },
+    {
+      "card_id": "CRD-003",
+      "type": "Rupay Select",
+      "masked_number": "**** **** **** 9876",
+      "status": "BLOCKED"
+    }
+  ]
+}
